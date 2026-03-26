@@ -234,33 +234,45 @@ def predict_batch_mapped():
     csv_content = data["csv_content"]
     mapping = data["mapping"]
     
+    # 1. Read CSV from the stored content
     df_raw = pd.read_csv(io.StringIO(csv_content))
     df_mapped = pd.DataFrame()
     
-    # Map columns based on user selection
+    # 2. Map columns based on user selection
     for model_col, uploaded_col in mapping.items():
         if uploaded_col and uploaded_col in df_raw.columns:
             df_mapped[model_col] = df_raw[uploaded_col]
         else:
+            # Fallback to defaults from your COLUMN_MINS if a column is missing
             df_mapped[model_col] = COLUMN_MINS.get(model_col, 0)
             
+    # 3. Preprocess and Generate AI Predictions
     df_processed = preprocess(df_mapped)
+    
+    # These return NumPy arrays, which are very fast
     predictions = model.predict(df_processed)
     probabilities = model.predict_proba(df_processed)[:, 1]
     
-    # Apply Common Sense Guardrail to every row in the batch
-    for i in range(len(predictions)):
-        if df_mapped.iloc[i]["MonthlyIncome"] < 500:
-            predictions[i] = 1 # Force Leave
-            probabilities[i] = 1.0 # Force 100% Risk
+    # 4. APPLY COMMON SENSE GUARDRAIL (The Speed Fix)
+    # This creates a 'mask' for all rows where income is less than 500
+    # .values ensures it matches the format of your predictions array
+    low_income_mask = (df_mapped["MonthlyIncome"] < 500).values
+    
+    # Update all low-income rows instantly without a loop
+    predictions[low_income_mask] = 1 
+    probabilities[low_income_mask] = 1.0
 
-    # Prepare results for UI
+    # 5. Prepare results for the UI
+    # We take the first 3 columns of the original CSV for identification
     preview_cols = list(df_raw.columns[:3])
     df_result = df_raw[preview_cols].copy()
+    
+    # Convert numeric predictions (0/1) to human-readable text
     df_result["Prediction"] = ["Will Leave" if p == 1 else "Will Stay" for p in predictions]
     df_result["Attrition Risk %"] = (probabilities * 100).round(1)
     
     results = df_result.to_dict(orient="records")
+    
     return jsonify({
         "results": results,
         "columns": preview_cols + ["Prediction", "Attrition Risk %"],
@@ -268,7 +280,6 @@ def predict_batch_mapped():
         "leaving": int(sum(predictions)),
         "staying": int(len(predictions) - sum(predictions))
     })
-
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
