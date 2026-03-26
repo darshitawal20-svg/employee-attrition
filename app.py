@@ -68,7 +68,7 @@ COLUMN_MINS = {
     "JobInvolvement": 1,
     "JobLevel": 1,
     "JobSatisfaction": 1,
-    "MonthlyIncome": 1009,
+    "MonthlyIncome": 0,  # Changed from 1009 to 0 to allow high-risk detection
     "MonthlyRate": 2094,
     "NumCompaniesWorked": 0,
     "OverTime": 0,
@@ -113,17 +113,19 @@ COLUMN_MAXS = {
 
 
 def clamp_values(df):
-    """
-    Clamp all numeric columns to realistic min/max ranges.
-    - If someone enters 0 income → clamped to 1009 (minimum)
-    - If someone enters 999999 income → clamped to 19999 (maximum)
-    This ensures the model always gets realistic values and predicts correctly.
-    """
     df = df.copy()
     for col, min_val in COLUMN_MINS.items():
         if col in df.columns:
-            df[col] = pd.to_numeric(df[col], errors='coerce').fillna(min_val)
+            # Convert to numeric, but don't fillna with min_val immediately
+            # This prevents your '0' from being turned into 1009
+            df[col] = pd.to_numeric(df[col], errors='coerce')
+            
+            # Only fill actual NaN/Empty values with the minimum
+            df[col] = df[col].fillna(min_val)
+            
+            # Clamp to the new ranges
             df[col] = df[col].clip(lower=min_val)
+            
     for col, max_val in COLUMN_MAXS.items():
         if col in df.columns:
             df[col] = df[col].clip(upper=max_val)
