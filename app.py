@@ -68,7 +68,7 @@ COLUMN_MINS = {
     "JobInvolvement": 1,
     "JobLevel": 1,
     "JobSatisfaction": 1,
-    "MonthlyIncome": 0,  # Changed from 1009 to 0 to allow high-risk detection
+    "MonthlyIncome": 0,  # CRITICAL: Changed from 1009 to 0
     "MonthlyRate": 2094,
     "NumCompaniesWorked": 0,
     "OverTime": 0,
@@ -116,14 +116,14 @@ def clamp_values(df):
     df = df.copy()
     for col, min_val in COLUMN_MINS.items():
         if col in df.columns:
-            # Convert to numeric, but don't fillna with min_val immediately
-            # This prevents your '0' from being turned into 1009
+            # Convert to numeric first
             df[col] = pd.to_numeric(df[col], errors='coerce')
             
-            # Only fill actual NaN/Empty values with the minimum
+            # Fill ONLY empty cells with the minimum. 
+            # If the user typed '0', it stays '0'.
             df[col] = df[col].fillna(min_val)
             
-            # Clamp to the new ranges
+            # Apply the floor
             df[col] = df[col].clip(lower=min_val)
             
     for col, max_val in COLUMN_MAXS.items():
