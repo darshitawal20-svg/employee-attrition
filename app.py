@@ -1,3 +1,9 @@
+# ============================================================
+#  STEP 2: Flask Web App — Employee Attrition Predictor
+#  Run: python app.py  →  open http://localhost:5000
+# ============================================================
+
+
 from flask import Flask, render_template, request, jsonify
 import pandas as pd
 import pickle
@@ -174,16 +180,31 @@ def index():
 @app.route("/predict_single", methods=["POST"])
 def predict_single():
     data = request.json
+    
+    # Define a 'Common Sense' threshold (e.g., $500 minimum)
+    MIN_LIVING_WAGE = 500 
+    monthly_income = float(data.get("MonthlyIncome", 1009))
+    
+    # Guardrail: If income is below the threshold, bypass the AI
+    if monthly_income < MIN_LIVING_WAGE:
+        return jsonify({
+            "prediction": "Will Leave",
+            "risk": "100.0%",
+            "color": "red",
+            "note": "Income below realistic threshold."
+        })
+
+    # Normal AI processing
     df_input = pd.DataFrame([data])
     df_processed = preprocess(df_input)
     prediction = model.predict(df_processed)[0]
     probability = model.predict_proba(df_processed)[0][1]
+    
     return jsonify({
         "prediction": "Will Leave" if prediction == 1 else "Will Stay",
         "risk": f"{probability * 100:.1f}%",
         "color": "red" if prediction == 1 else "green"
     })
-
 
 @app.route("/upload_csv", methods=["POST"])
 def upload_csv():
@@ -212,20 +233,33 @@ def predict_batch_mapped():
     data = request.json
     csv_content = data["csv_content"]
     mapping = data["mapping"]
+    
     df_raw = pd.read_csv(io.StringIO(csv_content))
     df_mapped = pd.DataFrame()
+    
+    # Map columns based on user selection
     for model_col, uploaded_col in mapping.items():
         if uploaded_col and uploaded_col in df_raw.columns:
             df_mapped[model_col] = df_raw[uploaded_col]
         else:
             df_mapped[model_col] = COLUMN_MINS.get(model_col, 0)
+            
     df_processed = preprocess(df_mapped)
     predictions = model.predict(df_processed)
     probabilities = model.predict_proba(df_processed)[:, 1]
+    
+    # Apply Common Sense Guardrail to every row in the batch
+    for i in range(len(predictions)):
+        if df_mapped.iloc[i]["MonthlyIncome"] < 500:
+            predictions[i] = 1 # Force Leave
+            probabilities[i] = 1.0 # Force 100% Risk
+
+    # Prepare results for UI
     preview_cols = list(df_raw.columns[:3])
     df_result = df_raw[preview_cols].copy()
     df_result["Prediction"] = ["Will Leave" if p == 1 else "Will Stay" for p in predictions]
     df_result["Attrition Risk %"] = (probabilities * 100).round(1)
+    
     results = df_result.to_dict(orient="records")
     return jsonify({
         "results": results,
