@@ -56,17 +56,35 @@ MODEL_COLUMN_DESCRIPTIONS = {
     "YearsWithCurrManager": "Years with current manager (number)"
 }
 
-COLUMN_MINS = {
-    "Age": 18, "DailyRate": 102, "DistanceFromHome": 1, "Education": 1,
-    "EnvironmentSatisfaction": 1, "HourlyRate": 30, "JobInvolvement": 1,
-    "JobLevel": 1, "JobSatisfaction": 1, "MonthlyIncome": 1009,
-    "MonthlyRate": 2094, "NumCompaniesWorked": 0, "PercentSalaryHike": 11,
-    "PerformanceRating": 1, "RelationshipSatisfaction": 1, "StockOptionLevel": 0,
-    "TotalWorkingYears": 0, "TrainingTimesLastYear": 0, "WorkLifeBalance": 1,
-    "YearsAtCompany": 0, "YearsInCurrentRole": 0, "YearsSinceLastPromotion": 0,
-    "YearsWithCurrManager": 0,
+# Safe default values — used when a column is missing from uploaded CSV
+# These are average/median values from IBM HR dataset
+COLUMN_DEFAULTS = {
+    "Age": 37,
+    "DailyRate": 800,
+    "DistanceFromHome": 9,
+    "Education": 3,
+    "EnvironmentSatisfaction": 3,
+    "HourlyRate": 65,
+    "JobInvolvement": 3,
+    "JobLevel": 2,
+    "JobSatisfaction": 3,
+    "MonthlyIncome": 6500,
+    "MonthlyRate": 14000,
+    "NumCompaniesWorked": 2,
+    "PercentSalaryHike": 15,
+    "PerformanceRating": 3,
+    "RelationshipSatisfaction": 3,
+    "StockOptionLevel": 1,
+    "TotalWorkingYears": 11,
+    "TrainingTimesLastYear": 3,
+    "WorkLifeBalance": 3,
+    "YearsAtCompany": 7,
+    "YearsInCurrentRole": 4,
+    "YearsSinceLastPromotion": 2,
+    "YearsWithCurrManager": 4,
 }
 
+# Maximum realistic values from IBM HR dataset
 COLUMN_MAXS = {
     "Age": 60, "DailyRate": 1499, "DistanceFromHome": 29, "Education": 5,
     "EnvironmentSatisfaction": 4, "HourlyRate": 100, "JobInvolvement": 4,
@@ -78,16 +96,37 @@ COLUMN_MAXS = {
     "YearsWithCurrManager": 17,
 }
 
+# These are the compensation fields — if ANY of these is 0 or missing,
+# it is a strong real-world signal that the employee will leave
+COMPENSATION_FIELDS = ["MonthlyIncome", "DailyRate", "HourlyRate", "MonthlyRate"]
 
-def clamp_values(df):
+
+def common_sense_check(df):
+    """
+    Apply real-world logic BEFORE the ML model.
+    If any compensation is 0 or missing → Will Leave (100% risk).
+    This handles cases the model was never trained on.
+    Returns a boolean Series: True = override to Will Leave.
+    """
+    override = pd.Series([False] * len(df), index=df.index)
+    for field in COMPENSATION_FIELDS:
+        if field in df.columns:
+            val = pd.to_numeric(df[field], errors='coerce').fillna(0)
+            override = override | (val <= 0)
+    return override
+
+
+def normalize_values(df):
+    """
+    Convert all numeric columns to proper numbers.
+    Cap any unrealistically high values at the maximum.
+    Does NOT set a minimum — 0 stays as 0 (handled by common_sense_check).
+    """
     df = df.copy()
-    for col, min_val in COLUMN_MINS.items():
+    for col in COLUMN_MAXS:
         if col in df.columns:
-            df[col] = pd.to_numeric(df[col], errors='coerce').fillna(min_val)
-            df[col] = df[col].clip(lower=min_val)
-    for col, max_val in COLUMN_MAXS.items():
-        if col in df.columns:
-            df[col] = df[col].clip(upper=max_val)
+            df[col] = pd.to_numeric(df[col], errors='coerce').fillna(COLUMN_DEFAULTS.get(col, 0))
+            df[col] = df[col].clip(upper=COLUMN_MAXS[col])
     return df
 
 
@@ -96,17 +135,21 @@ def preprocess(df_raw):
     for col in ["EmployeeNumber", "EmployeeCount", "Over18", "StandardHours", "Attrition"]:
         if col in df.columns:
             df.drop(columns=[col], inplace=True)
-    df = clamp_values(df)
+
+    df = normalize_values(df)
+
     if "Gender" in df.columns:
         df["Gender"] = df["Gender"].map({"Male": 1, "Female": 0})
     if "OverTime" in df.columns:
         df["OverTime"] = df["OverTime"].map({"Yes": 1, "No": 0})
+
     cat_cols = ["BusinessTravel", "Department", "EducationField", "JobRole", "MaritalStatus"]
     for col in cat_cols:
         if col in df.columns:
             dummies = pd.get_dummies(df[col], prefix=col)
             df = pd.concat([df, dummies], axis=1)
             df.drop(columns=[col], inplace=True)
+
     bool_cols = df.select_dtypes(include="bool").columns.tolist()
     df[bool_cols] = df[bool_cols].astype(int)
     df = df.reindex(columns=FEATURE_COLUMNS, fill_value=0)
@@ -122,9 +165,24 @@ def index():
 def predict_single():
     data = request.json
     df_input = pd.DataFrame([data])
+
+    # Step 1 — Common sense check first
+    override = common_sense_check(df_input)
+
+    if override.iloc[0]:
+        # Zero compensation = definite leave, no need for ML
+        return jsonify({
+            "prediction": "Will Leave",
+            "risk": "98.0%",
+            "color": "red",
+            "reason": "Zero or missing compensation detected"
+        })
+
+    # Step 2 — Normal ML prediction
     df_processed = preprocess(df_input)
     prediction = model.predict(df_processed)[0]
     probability = model.predict_proba(df_processed)[0][1]
+
     return jsonify({
         "prediction": "Will Leave" if prediction == 1 else "Will Stay",
         "risk": f"{probability * 100:.1f}%",
@@ -135,15 +193,14 @@ def predict_single():
 @app.route("/upload_and_predict", methods=["POST"])
 def upload_and_predict():
     """
-    ONE single request — upload CSV + get predictions immediately.
-    No back-and-forth. Fast.
+    Single fast request — upload CSV + auto-map columns + predict instantly.
     """
     file = request.files["file"]
     content = file.stream.read().decode("utf-8")
     df_raw = pd.read_csv(io.StringIO(content))
     uploaded_columns = df_raw.columns.tolist()
 
-    # Auto-map columns (case-insensitive exact match)
+    # Auto-map columns (case-insensitive match)
     mapping = {}
     for model_col in MODEL_REQUIRED_COLUMNS:
         for uploaded_col in uploaded_columns:
@@ -151,27 +208,36 @@ def upload_and_predict():
                 mapping[model_col] = uploaded_col
                 break
 
-    # Build mapped dataframe
+    # Build mapped dataframe using model column names
     df_mapped = pd.DataFrame()
     for model_col in MODEL_REQUIRED_COLUMNS:
         uploaded_col = mapping.get(model_col)
         if uploaded_col and uploaded_col in df_raw.columns:
-            df_mapped[model_col] = df_raw[uploaded_col]
+            df_mapped[model_col] = df_raw[uploaded_col].values
         else:
-            df_mapped[model_col] = COLUMN_MINS.get(model_col, 0)
+            # Missing column → use average default value
+            df_mapped[model_col] = COLUMN_DEFAULTS.get(model_col, 0)
 
-    # Predict
+    df_mapped = df_mapped.reset_index(drop=True)
+
+    # Step 1 — Common sense check (vectorized, instant even for 10000 rows)
+    override_mask = common_sense_check(df_mapped).values
+
+    # Step 2 — ML prediction for all rows
     df_processed = preprocess(df_mapped)
-    predictions = model.predict(df_processed)
-    probabilities = model.predict_proba(df_processed)[:, 1]
+    predictions = model.predict(df_processed).copy()
+    probabilities = model.predict_proba(df_processed)[:, 1].copy()
 
-    # Build results — show first 3 original columns + prediction
+    # Step 3 — Apply overrides for zero-compensation rows
+    predictions[override_mask] = 1
+    probabilities[override_mask] = 0.98
+
+    # Build result — show first 3 original columns for identification
     preview_cols = uploaded_columns[:3]
-    df_result = df_raw[preview_cols].copy()
+    df_result = df_raw[preview_cols].copy().reset_index(drop=True)
     df_result["Prediction"] = ["Will Leave" if p == 1 else "Will Stay" for p in predictions]
     df_result["Attrition Risk %"] = (probabilities * 100).round(1)
 
-    auto_matched = list(mapping.keys())
     unmatched = [c for c in MODEL_REQUIRED_COLUMNS if c not in mapping]
 
     return jsonify({
@@ -180,12 +246,8 @@ def upload_and_predict():
         "total": len(predictions),
         "leaving": int(sum(predictions)),
         "staying": int(len(predictions) - sum(predictions)),
-        "auto_matched": len(auto_matched),
+        "auto_matched": len(mapping),
         "unmatched": unmatched,
-        "uploaded_columns": uploaded_columns,
-        "model_columns": MODEL_REQUIRED_COLUMNS,
-        "model_descriptions": MODEL_COLUMN_DESCRIPTIONS,
-        "mapping": mapping,
     })
 
 
