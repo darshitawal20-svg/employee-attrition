@@ -32,39 +32,58 @@ DEFAULTS = {
 # STEP 2: COMMON SENSE RULES (The Intelligence Layer)
 # ─────────────────────────────────────────────────────────
 def common_sense_check(df):
+    """
+    Acts as the 'Supreme Court' to override the AI.
+    Checks for Poverty, Paradoxes, and Role/Salary mismatches.
+    """
     n = len(df)
     override = [False] * n
     reasons = [""] * n
     
-    # We use $55 as the India Minimum Wage threshold (~Rs. 4,576)
+    # Threshold for India Minimum Wage (~Rs. 4,576)
     MIN_MONTHLY_INCOME = 55.0 
 
     for i in range(n):
         row = df.iloc[i]
-        income = pd.to_numeric(row.get("MonthlyIncome", 0))
-        daily  = pd.to_numeric(row.get("DailyRate", 0))
-        age    = pd.to_numeric(row.get("Age", 30))
-        exp    = pd.to_numeric(row.get("TotalWorkingYears", 0))
-        co     = pd.to_numeric(row.get("YearsAtCompany", 0))
-        role   = pd.to_numeric(row.get("YearsInCurrentRole", 0))
+        
+        # Helper: Extract numbers even if they come as strings like "5 - Executive"
+        def extract_num(val):
+            try:
+                if isinstance(val, str):
+                    return float(val.split()[0])
+                return float(val)
+            except: return 0
 
-        # RULE 1: THE POVERTY CHECK (Solves your $1 Daily Rate issue)
-        # We flag anything under $100 daily as "Unrealistic"
+        income = extract_num(row.get("MonthlyIncome", 0))
+        daily  = extract_num(row.get("DailyRate", 0))
+        age    = extract_num(row.get("Age", 30))
+        exp    = extract_num(row.get("TotalWorkingYears", 0))
+        co     = extract_num(row.get("YearsAtCompany", 0))
+        role   = extract_num(row.get("YearsInCurrentRole", 0))
+        level  = extract_num(row.get("JobLevel", 1))
+
+        # RULE 1: THE POVERTY CHECK ($1 Daily Rate issue)
         if daily < 100 or income < MIN_MONTHLY_INCOME:
             override[i] = True
-            reasons[i] = "Unrealistic Pay: Below survival threshold for this role."
+            reasons[i] = "Unrealistic Pay: Below survival threshold for a corporate role."
         
-        # RULE 2: THE BIOLOGICAL PARADOX
+        # RULE 2: THE EXECUTIVE POVERTY CHECK (Fixes Test Case 3)
+        # If Level is 4 (Senior) or 5 (Executive), but income is very low
+        elif level >= 4 and income < 1500:
+            override[i] = True
+            reasons[i] = f"Role Mismatch: A Level {int(level)} Executive cannot earn only ${income}/mo."
+
+        # RULE 3: THE BIOLOGICAL PARADOX
         elif exp + 14 > age:
             override[i] = True
             reasons[i] = "Logic Error: Total Experience is impossible for this age."
 
-        # RULE 3: THE TENURE PARADOX
+        # RULE 4: THE TENURE PARADOX
         elif co > exp:
             override[i] = True
             reasons[i] = "Logic Error: Years at Company cannot exceed Total Career."
             
-        # RULE 4: THE ROLE PARADOX
+        # RULE 5: THE ROLE PARADOX
         elif role > co:
             override[i] = True
             reasons[i] = "Logic Error: Years in Role cannot exceed time at Company."
@@ -98,7 +117,6 @@ def index():
 @app.route("/predict_single", methods=["POST"])
 def predict_single():
     data = request.json
-    # Fill hidden fields so model doesn't crash
     for col, val in DEFAULTS.items():
         if col not in data: data[col] = val
         
@@ -112,7 +130,7 @@ def predict_single():
             "risk": "99.0%", 
             "color": "red",
             "reason": reasons[0], 
-            "method": "rule" # Triggers the Yellow Tag
+            "method": "rule"
         })
 
     # 2. RUN AI MODEL SECOND
@@ -123,7 +141,7 @@ def predict_single():
         "prediction": "Will Leave" if prob > 0.5 else "Will Stay",
         "risk": f"{prob * 100:.1f}%",
         "color": "red" if prob > 0.5 else "green",
-        "method": "model" # Triggers the Blue Tag
+        "method": "model"
     })
 
 @app.route("/upload_and_predict", methods=["POST"])
