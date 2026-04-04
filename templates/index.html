@@ -1,162 +1,589 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>AttritionIQ — 100% Intelligent</title>
-    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@800&family=Instrument+Sans:wght@400;600&display=swap" rel="stylesheet">
-    <style>
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-        :root { --bg: #07080d; --surface: #111527; --accent: #6378ff; --red: #ff4d6d; --green: #10d48e; --text: #e8ecff; }
-        body { font-family: 'Instrument Sans', sans-serif; background: var(--bg); color: var(--text); padding: 2rem; }
-        .page-wrap { max-width: 980px; margin: 0 auto; }
-        .tabs { display: flex; gap: 10px; margin-bottom: 2rem; }
-        .tab-btn { padding: 10px 20px; border-radius: 20px; border: 1px solid var(--accent); background: none; color: white; cursor: pointer; font-weight: 600; }
-        .tab-btn.active { background: var(--accent); }
-        .card { background: var(--surface); padding: 1.5rem; border-radius: 12px; margin-bottom: 1rem; border: 1px solid rgba(255,255,255,0.05); }
-        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
-        .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; }
-        label { display: block; font-size: 0.7rem; text-transform: uppercase; color: #8892b0; margin-bottom: 5px; font-weight: 700; }
-        input, select { width: 100%; padding: 10px; background: #0d0f18; border: 1px solid #333; color: white; border-radius: 6px; outline: none; }
-        .predict-btn { width: 100%; padding: 1.2rem; background: var(--accent); border: none; color: white; font-weight: 800; border-radius: 8px; cursor: pointer; font-family: 'Syne'; margin-top: 10px; }
-        #result, #batch-result { display: none; margin-top: 20px; text-align: center; padding: 2rem; border-radius: 12px; background: #161a2e; border: 2px solid #333; }
-        .card-title { font-family: 'Syne'; font-size: 0.8rem; text-transform: uppercase; color: var(--accent); margin-bottom: 1rem; border-bottom: 1px solid #333; padding-bottom: 5px; }
-        .tab-content { display: none; }
-        .tab-content.active { display: block; }
-        table { width: 100%; border-collapse: collapse; margin-top: 1rem; text-align: left; }
-        th, td { padding: 10px; border-bottom: 1px solid #333; font-size: 0.85rem; }
-        .chip { padding: 4px 10px; border-radius: 10px; font-weight: 700; font-size: 0.7rem; }
-        .chip.leave { background: rgba(255,77,109,0.2); color: var(--red); }
-        .chip.stay { background: rgba(16,212,142,0.2); color: var(--green); }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AttritionIQ — Employee Attrition Predictor</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#07080d;--bg2:#0d0f18;--surface:#111527;--surface2:#161a2e;
+  --border:rgba(99,120,255,0.13);--border2:rgba(99,120,255,0.26);
+  --accent:#6378ff;--glow:rgba(99,120,255,0.3);
+  --green:#10d48e;--green-dim:rgba(16,212,142,0.11);
+  --red:#ff4d6d;--red-dim:rgba(255,77,109,0.11);
+  --yellow:#f0b429;
+  --text:#e8ecff;--text2:#8892b0;--text3:#4a5280;
+  --r:14px;--rs:9px
+}
+html{scroll-behavior:smooth}
+body{font-family:'Instrument Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse 55% 40% at 15% 10%,rgba(99,120,255,0.07),transparent 60%),radial-gradient(ellipse 50% 50% at 85% 90%,rgba(99,120,255,0.05),transparent 60%);pointer-events:none;z-index:0}
+body::after{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(99,120,255,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(99,120,255,0.025) 1px,transparent 1px);background-size:44px 44px;pointer-events:none;z-index:0}
+.wrap{position:relative;z-index:1;max-width:920px;margin:0 auto;padding:3rem 1.5rem 6rem}
+
+/* HEADER */
+header{margin-bottom:2.5rem}
+.hrow{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.75rem;margin-bottom:.9rem}
+.logo{font-family:'Syne',sans-serif;font-size:1.5rem;font-weight:800;letter-spacing:-.02em}
+.logo b{color:var(--accent)}
+.acc-pill{display:flex;align-items:center;gap:.5rem;background:var(--surface);border:1px solid var(--border2);border-radius:999px;padding:.4rem 1rem;font-family:'JetBrains Mono',monospace;font-size:.76rem;color:var(--green)}
+.acc-pill::before{content:'';width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);animation:blink 2s infinite}
+.hero{font-family:'Syne',sans-serif;font-size:clamp(1.8rem,5vw,2.9rem);font-weight:800;letter-spacing:-.03em;line-height:1.1;margin-bottom:.7rem}
+.hero em{font-style:normal;background:linear-gradient(135deg,#6378ff,#a78bfa 50%,#6378ff);background-size:200%;-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;animation:shimmer 4s linear infinite}
+.sub{color:var(--text2);font-size:.9rem;line-height:1.65;max-width:500px}
+
+/* TABS */
+.tabs{display:flex;background:var(--surface);border:1px solid var(--border);border-radius:999px;padding:4px;width:fit-content;margin-bottom:2rem}
+.tb{background:none;border:none;color:var(--text2);padding:.5rem 1.3rem;border-radius:999px;cursor:pointer;font-family:'Instrument Sans',sans-serif;font-size:.88rem;font-weight:500;transition:all .25s}
+.tb.active{background:var(--accent);color:#fff;box-shadow:0 4px 18px var(--glow)}
+
+/* CARDS */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.5rem;margin-bottom:.9rem;transition:border-color .3s}
+.card:hover{border-color:var(--border2)}
+.ch{display:flex;align-items:center;gap:.5rem;margin-bottom:1.25rem}
+.ci{width:28px;height:28px;border-radius:7px;background:rgba(99,120,255,.12);border:1px solid rgba(99,120,255,.18);display:flex;align-items:center;justify-content:center;font-size:.82rem}
+.ct{font-family:'Syne',sans-serif;font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em}
+
+/* GRIDS */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:.8rem}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.8rem}
+
+/* FIELDS */
+.f label{display:block;font-size:.68rem;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.32rem}
+.f input,.f select{width:100%;background:var(--bg2);border:1px solid var(--border);border-radius:var(--rs);padding:.57rem .85rem;color:var(--text);font-family:'Instrument Sans',sans-serif;font-size:.87rem;outline:none;transition:border-color .2s,box-shadow .2s;-webkit-appearance:none;appearance:none}
+.f input:focus,.f select:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--glow)}
+.f select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 12 12'%3E%3Cpath fill='%238892b0' d='M6 8L1 3h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right .8rem center;padding-right:2rem;cursor:pointer}
+.f select option{background:#111527}
+
+/* OVERTIME HOURLY SECTION */
+#hourly-section{display:none;margin-top:.7rem;padding:.9rem;background:rgba(240,180,41,.05);border:1px solid rgba(240,180,41,.18);border-radius:var(--rs)}
+#hourly-section.show{display:block}
+.ot-note{font-size:.72rem;color:var(--yellow);margin-bottom:.6rem}
+
+/* PREDICT BUTTON */
+.pbtn{width:100%;background:var(--accent);color:#fff;border:none;border-radius:var(--rs);padding:1rem;font-family:'Syne',sans-serif;font-size:.95rem;font-weight:700;letter-spacing:.05em;cursor:pointer;margin-top:.5rem;transition:transform .15s,box-shadow .2s;box-shadow:0 4px 22px var(--glow)}
+.pbtn:hover{transform:translateY(-2px);box-shadow:0 8px 30px var(--glow)}
+.pbtn:active{transform:translateY(0)}
+.pbtn:disabled{opacity:.65;cursor:not-allowed;transform:none}
+
+/* RESULT */
+#result{display:none;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:2rem;margin-top:1rem;text-align:center}
+.r-emoji{font-size:2.5rem;margin-bottom:.5rem}
+.r-verdict{font-family:'Syne',sans-serif;font-size:1.9rem;font-weight:800;letter-spacing:-.02em;margin-bottom:.3rem}
+.r-sub{font-size:.82rem;color:var(--text2);margin-bottom:.6rem}
+.r-tag{font-size:.74rem;font-family:'JetBrains Mono',monospace;padding:.35rem .8rem;border-radius:6px;display:inline-block;margin-bottom:.9rem;line-height:1.5}
+.r-tag.rule{background:rgba(240,180,41,.09);color:var(--yellow);border:1px solid rgba(240,180,41,.22)}
+.r-tag.model{background:rgba(99,120,255,.08);color:#818cf8;border:1px solid rgba(99,120,255,.18)}
+.bar-wrap{background:rgba(255,255,255,.06);border-radius:999px;height:8px;max-width:280px;margin:0 auto .55rem;overflow:hidden}
+.bar-fill{height:100%;border-radius:999px;transition:width .8s cubic-bezier(.4,0,.2,1)}
+.r-pct{font-family:'JetBrains Mono',monospace;font-size:.82rem;color:var(--text2)}
+
+/* UPLOAD ZONE */
+.uz{border:2px dashed var(--border2);border-radius:var(--r);padding:2.5rem 2rem;text-align:center;cursor:pointer;transition:all .25s;position:relative}
+.uz:hover{border-color:var(--accent);background:rgba(99,120,255,.04)}
+.uz input[type="file"]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.ui{width:50px;height:50px;border-radius:12px;background:rgba(99,120,255,.1);border:1px solid rgba(99,120,255,.18);display:flex;align-items:center;justify-content:center;font-size:1.35rem;margin:0 auto .85rem;transition:transform .2s}
+.uz:hover .ui{transform:scale(1.07)}
+.ut{font-family:'Syne',sans-serif;font-weight:700;font-size:.95rem;margin-bottom:.3rem}
+.us{color:var(--text2);font-size:.82rem}
+.us b{color:var(--accent)}
+
+/* LOADER */
+.lcard{display:none;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.8rem;text-align:center;margin-top:.9rem}
+.lt{font-family:'Syne',sans-serif;font-size:.92rem;font-weight:700;margin-bottom:.32rem}
+.ls{font-size:.8rem;color:var(--text2);margin-bottom:1rem}
+.pw{background:rgba(255,255,255,.05);border-radius:999px;height:5px;max-width:260px;margin:0 auto;overflow:hidden}
+.pf{height:100%;border-radius:999px;background:var(--accent);animation:pp 1.5s ease infinite}
+
+/* BATCH RESULT */
+#batch-result{display:none;margin-top:1.1rem}
+.banner{border-radius:var(--rs);padding:.8rem 1rem;margin-bottom:.85rem;font-size:.82rem;line-height:1.55}
+.banner.good{background:rgba(16,212,142,.07);border:1px solid rgba(16,212,142,.18);color:var(--green)}
+.banner.warn{background:rgba(240,180,41,.07);border:1px solid rgba(240,180,41,.18);color:var(--yellow)}
+.sg{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.75rem;margin-bottom:.85rem}
+.sc{background:var(--surface);border:1px solid var(--border);border-radius:var(--rs);padding:1rem .9rem;text-align:center;position:relative;overflow:hidden}
+.sc::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px;background:var(--accent);opacity:.55}
+.sc.r::after{background:var(--red)}
+.sc.g::after{background:var(--green)}
+.sn{font-family:'Syne',sans-serif;font-size:2rem;font-weight:800;letter-spacing:-.03em;line-height:1;margin-bottom:.2rem}
+.sl{font-size:.68rem;color:var(--text2);text-transform:uppercase;letter-spacing:.07em;font-weight:600}
+.tw{border:1px solid var(--border);border-radius:var(--rs);overflow:hidden;max-height:440px;overflow-y:auto}
+.tw::-webkit-scrollbar{width:4px}
+.tw::-webkit-scrollbar-track{background:var(--surface)}
+.tw::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+table{width:100%;border-collapse:collapse}
+thead{position:sticky;top:0;z-index:2}
+th{background:var(--surface2);padding:.68rem .95rem;text-align:left;font-size:.64rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.1em;border-bottom:1px solid var(--border)}
+td{padding:.63rem .95rem;border-bottom:1px solid var(--border);font-size:.84rem;transition:background .15s}
+tr:last-child td{border-bottom:none}
+tbody tr:hover td{background:rgba(99,120,255,.04)}
+.rn{font-family:'JetBrains Mono',monospace;font-size:.68rem;color:var(--text3)}
+.chip{display:inline-flex;align-items:center;padding:.22rem .7rem;border-radius:999px;font-size:.72rem;font-weight:700}
+.chip.leave{background:var(--red-dim);color:var(--red);border:1px solid rgba(255,77,109,.2)}
+.chip.stay{background:var(--green-dim);color:var(--green);border:1px solid rgba(16,212,142,.2)}
+.rm{font-family:'JetBrains Mono',monospace;font-size:.8rem;color:var(--text2)}
+.fc{font-size:.7rem;color:var(--yellow);max-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+.tc{display:none}.tc.active{display:block}
+@keyframes shimmer{0%{background-position:0% center}100%{background-position:200% center}}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.35}}
+@keyframes pp{0%{width:8%}50%{width:78%}100%{width:8%}}
+@media(max-width:600px){.g2,.g3,.sg{grid-template-columns:1fr}}
+</style>
 </head>
 <body>
-<div class="page-wrap">
-    <h1 style="font-family:'Syne'; margin-bottom: 2rem;">Attrition<span>IQ</span></h1>
-    
-    <div class="tabs">
-        <button class="tab-btn active" onclick="switchTab('single')">👤 Single Predictor</button>
-        <button class="tab-btn" onclick="switchTab('batch')">📋 Batch Analysis</button>
+<div class="wrap">
+
+  <header>
+    <div class="hrow">
+      <div class="logo">Attrition<b>IQ</b></div>
+      <div class="acc-pill">Random Forest · 87.76% Accuracy</div>
+    </div>
+    <h1 class="hero">Predict who's about to<br><em>walk out the door.</em></h1>
+    <p class="sub">Smart dual-layer engine: real-world logic rules + ML model. Works on any company's HR data.</p>
+  </header>
+
+  <div class="tabs">
+    <button class="tb active" onclick="switchTab('single')">👤 Single Employee</button>
+    <button class="tb" onclick="switchTab('batch')">📋 Batch CSV Analysis</button>
+  </div>
+
+  <!-- ══════════ SINGLE EMPLOYEE ══════════ -->
+  <div id="tab-single" class="tc active">
+
+    <!-- Personal Information -->
+    <div class="card">
+      <div class="ch"><div class="ci">👤</div><div class="ct">Personal Information</div></div>
+      <div class="g2">
+        <div class="f">
+          <label>Age</label>
+          <input type="number" id="Age" value="30" min="16" max="70">
+        </div>
+        <div class="f">
+          <label>Gender</label>
+          <select id="Gender">
+            <option>Male</option>
+            <option>Female</option>
+          </select>
+        </div>
+        <div class="f">
+          <label>Marital Status</label>
+          <select id="MaritalStatus">
+            <option>Single</option>
+            <option>Married</option>
+            <option>Divorced</option>
+          </select>
+        </div>
+        <div class="f">
+          <label>Education Level</label>
+          <select id="Education">
+            <option value="1">High School</option>
+            <option value="2">Associate Degree</option>
+            <option value="3" selected>Bachelor's Degree</option>
+            <option value="4">Master's Degree</option>
+            <option value="5">Doctorate / PhD</option>
+          </select>
+        </div>
+        <div class="f">
+          <label>Education Field</label>
+          <select id="EducationField">
+            <option>Life Sciences</option>
+            <option>Medical</option>
+            <option>Marketing</option>
+            <option>Technical Degree</option>
+            <option>Human Resources</option>
+            <option>Other</option>
+          </select>
+        </div>
+      </div>
     </div>
 
-    <div id="tab-single" class="tab-content active">
-        <div class="card">
-            <div class="card-title">Personal & Education</div>
-            <div class="grid">
-                <div class="field"><label>Age</label><input type="number" id="Age" value="30"></div>
-                <div class="field"><label>Gender</label><select id="Gender"><option>Male</option><option>Female</option></select></div>
-                <div class="field"><label>Marital Status</label><select id="MaritalStatus"><option>Single</option><option>Married</option><option>Divorced</option></select></div>
-                <div class="field"><label>Education</label>
-                    <select id="Education">
-                        <option value="1">High School</option><option value="2">Associate</option>
-                        <option value="3" selected>Bachelor's Degree</option><option value="4">Master's</option><option value="5">Doctorate</option>
-                    </select>
-                </div>
-                <div class="field"><label>Education Field</label><select id="EducationField"><option>Life Sciences</option><option>Medical</option><option>Marketing</option><option>Technical Degree</option><option>Other</option></select></div>
-                <div class="field"><label>Distance from Home (km)</label><input type="number" id="DistanceFromHome" value="5"></div>
-            </div>
+    <!-- Job Details -->
+    <div class="card">
+      <div class="ch"><div class="ci">💼</div><div class="ct">Job Details</div></div>
+      <div class="g2">
+        <div class="f">
+          <label>Department</label>
+          <select id="Department">
+            <option>Sales</option>
+            <option>Research & Development</option>
+            <option>Human Resources</option>
+            <option>Information Technology</option>
+            <option>Finance & Accounting</option>
+            <option>Operations</option>
+            <option>Marketing</option>
+            <option>Customer Support / BPO</option>
+            <option>Legal & Compliance</option>
+            <option>Supply Chain & Logistics</option>
+            <option>Administration</option>
+            <option>Product Management</option>
+            <option>Engineering</option>
+            <option>Healthcare</option>
+            <option>Education & Training</option>
+            <option>Other</option>
+          </select>
         </div>
-
-        <div class="card">
-            <div class="card-title">Job & Compensation</div>
-            <div class="grid">
-                <div class="field"><label>Monthly Income ($)</label><input type="number" id="MonthlyIncome" value="5000"></div>
-                <div class="field"><label>Daily Rate ($)</label><input type="number" id="DailyRate" value="800"></div>
-                <div class="field"><label>Hourly Rate ($)</label><input type="number" id="HourlyRate" value="65"></div>
-                <div class="field"><label>Monthly Rate ($)</label><input type="number" id="MonthlyRate" value="15000"></div>
-                <div class="field"><label>Department</label><select id="Department"><option>Sales</option><option>Research & Development</option><option>Human Resources</option></select></div>
-                <div class="field"><label>Job Role</label><select id="JobRole"><option>Manager</option><option>Sales Executive</option><option>Research Scientist</option><option>Laboratory Technician</option></select></div>
-                <div class="field"><label>Overtime</label><select id="OverTime"><option>No</option><option>Yes</option></select></div>
-                <div class="field"><label>Job Level</label><select id="JobLevel"><option value="1">1</option><option value="2" selected>2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option></select></div>
-            </div>
+        <div class="f">
+          <label>Job Role</label>
+          <select id="JobRole">
+            <option>Sales Executive</option>
+            <option>Sales Representative</option>
+            <option>Research Scientist</option>
+            <option>Research Director</option>
+            <option>Laboratory Technician</option>
+            <option>Manufacturing Director</option>
+            <option>Healthcare Representative</option>
+            <option>Manager</option>
+            <option>Senior Manager</option>
+            <option>Human Resources</option>
+            <option>HR Manager</option>
+            <option>Software Engineer</option>
+            <option>Senior Software Engineer</option>
+            <option>Data Analyst</option>
+            <option>Data Scientist</option>
+            <option>Business Analyst</option>
+            <option>Product Manager</option>
+            <option>Project Manager</option>
+            <option>Team Lead</option>
+            <option>BPO Agent / Call Centre Executive</option>
+            <option>BPO Team Leader</option>
+            <option>Customer Support Executive</option>
+            <option>Finance Analyst</option>
+            <option>Accountant</option>
+            <option>Marketing Executive</option>
+            <option>Operations Executive</option>
+            <option>Logistics Coordinator</option>
+            <option>Administrative Assistant</option>
+            <option>Director</option>
+            <option>Vice President</option>
+            <option>Other</option>
+          </select>
         </div>
-
-        <div class="card">
-            <div class="card-title">Tenure & History</div>
-            <div class="grid-3">
-                <div class="field"><label>Total Working Years</label><input type="number" id="TotalWorkingYears" value="10"></div>
-                <div class="field"><label>Years at Company</label><input type="number" id="YearsAtCompany" value="5"></div>
-                <div class="field"><label>Years in Current Role</label><input type="number" id="YearsInCurrentRole" value="3"></div>
-                <div class="field"><label>Years Since Promotion</label><input type="number" id="YearsSinceLastPromotion" value="1"></div>
-                <div class="field"><label>Years With Manager</label><input type="number" id="YearsWithCurrManager" value="3"></div>
-                <div class="field"><label>Num Companies Worked</label><input type="number" id="NumCompaniesWorked" value="1"></div>
-                <div class="field"><label>Percent Salary Hike</label><input type="number" id="PercentSalaryHike" value="12"></div>
-                <div class="field"><label>Stock Option Level</label><input type="number" id="StockOptionLevel" value="1"></div>
-                <div class="field"><label>Training Last Year</label><input type="number" id="TrainingTimesLastYear" value="2"></div>
-            </div>
+        <div class="f">
+          <label>Job Level</label>
+          <select id="JobLevel">
+            <option value="1">Entry Level</option>
+            <option value="2" selected>Junior</option>
+            <option value="3">Mid Level</option>
+            <option value="4">Senior</option>
+            <option value="5">Executive / Director</option>
+          </select>
         </div>
-
-        <div class="card">
-            <div class="card-title">Engagement & Satisfaction</div>
-            <div class="grid-3">
-                <div class="field"><label>Job Satisfaction</label><select id="JobSatisfaction"><option value="1">Low</option><option value="2">Med</option><option value="3" selected>High</option><option value="4">Very High</option></select></div>
-                <div class="field"><label>Environment Sat.</label><select id="EnvironmentSatisfaction"><option value="1">Low</option><option value="2">Med</option><option value="3" selected>High</option><option value="4">Very High</option></select></div>
-                <div class="field"><label>Job Involvement</label><select id="JobInvolvement"><option value="1">Low</option><option value="2">Med</option><option value="3" selected>High</option><option value="4">Very High</option></select></div>
-                <div class="field"><label>Work Life Balance</label><select id="WorkLifeBalance"><option value="1">Poor</option><option value="2">Fair</option><option value="3" selected>Good</option><option value="4">Excellent</option></select></div>
-                <div class="field"><label>Performance Rating</label><select id="PerformanceRating"><option value="3" selected>Good</option><option value="4">Outstanding</option></select></div>
-                <div class="field"><label>Relationship Sat.</label><select id="RelationshipSatisfaction"><option value="1">Low</option><option value="2">Med</option><option value="3" selected>High</option><option value="4">Very High</option></select></div>
-                <div class="field" style="grid-column: span 3;"><label>Business Travel</label><select id="BusinessTravel"><option>Travel_Rarely</option><option>Travel_Frequently</option><option>Non-Travel</option></select></div>
-            </div>
+        <div class="f">
+          <label>Works Overtime?</label>
+          <select id="OverTime" onchange="toggleHourly()">
+            <option value="No">No</option>
+            <option value="Yes">Yes</option>
+          </select>
         </div>
-
-        <button class="predict-btn" onclick="predictSingle()">ANALYZE RISK STATUS →</button>
-
-        <div id="result">
-            <h2 id="verdict-text"></h2>
-            <p id="result-reason" style="color:var(--red); margin: 10px 0; font-weight:600;"></p>
-            <div id="risk-text" style="font-family:'JetBrains Mono';"></div>
+        <div class="f">
+          <label>Number of Previous Companies Worked At</label>
+          <input type="number" id="NumCompaniesWorked" value="1" min="0" max="20">
         </div>
+      </div>
     </div>
 
-    <div id="tab-batch" class="tab-content">
-        <div class="card">
-            <div class="card-title">Dataset Analysis</div>
-            <input type="file" id="csvFile" accept=".csv" onchange="handleUpload(this)">
+    <!-- Compensation -->
+    <div class="card">
+      <div class="ch"><div class="ci">💰</div><div class="ct">Compensation</div></div>
+      <div class="g2">
+        <div class="f">
+          <label>Monthly Income ($)</label>
+          <input type="number" id="MonthlyIncome" value="5000" min="0">
         </div>
-        <div id="batch-result">
-            <div id="stat-summary" style="font-weight: 800; margin-bottom: 1rem;"></div>
-            <table id="batch-table"></table>
+        <div class="f">
+          <label>Daily Rate ($)</label>
+          <input type="number" id="DailyRate" value="800" min="0">
         </div>
+        <div class="f">
+          <label>Stock Option Level</label>
+          <select id="StockOptionLevel">
+            <option value="0">None</option>
+            <option value="1" selected>Low</option>
+            <option value="2">Medium</option>
+            <option value="3">High</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Hourly Rate — only visible when OverTime = Yes -->
+      <div id="hourly-section">
+        <div class="ot-note">⏰ Hourly Rate is relevant only when the employee works overtime</div>
+        <div class="g2">
+          <div class="f">
+            <label>Hourly Rate ($)</label>
+            <input type="number" id="HourlyRate" value="65" min="0">
+          </div>
+          <div class="f">
+            <label>Monthly Rate ($)</label>
+            <input type="number" id="MonthlyRate" value="15000" min="0">
+          </div>
+        </div>
+      </div>
     </div>
-</div>
+
+    <!-- Work Experience -->
+    <div class="card">
+      <div class="ch"><div class="ci">📈</div><div class="ct">Work Experience & Tenure</div></div>
+      <div class="g3">
+        <div class="f">
+          <label>Total Working Years</label>
+          <input type="number" id="TotalWorkingYears" value="8" min="0">
+        </div>
+        <div class="f">
+          <label>Years at This Company</label>
+          <input type="number" id="YearsAtCompany" value="4" min="0">
+        </div>
+        <div class="f">
+          <label>Years in Current Role</label>
+          <input type="number" id="YearsInCurrentRole" value="2" min="0">
+        </div>
+        <div class="f">
+          <label>Years Since Last Promotion</label>
+          <input type="number" id="YearsSinceLastPromotion" value="1" min="0">
+        </div>
+      </div>
+    </div>
+
+    <!-- Satisfaction -->
+    <div class="card">
+      <div class="ch"><div class="ci">😊</div><div class="ct">Satisfaction & Engagement</div></div>
+      <div class="g3">
+        <div class="f">
+          <label>Job Satisfaction</label>
+          <select id="JobSatisfaction">
+            <option value="1">Low</option>
+            <option value="2">Medium</option>
+            <option value="3" selected>High</option>
+            <option value="4">Very High</option>
+          </select>
+        </div>
+        <div class="f">
+          <label>Environment Satisfaction</label>
+          <select id="EnvironmentSatisfaction">
+            <option value="1">Low</option>
+            <option value="2">Medium</option>
+            <option value="3" selected>High</option>
+            <option value="4">Very High</option>
+          </select>
+        </div>
+        <div class="f">
+          <label>Work-Life Balance</label>
+          <select id="WorkLifeBalance">
+            <option value="1">Poor</option>
+            <option value="2">Fair</option>
+            <option value="3" selected>Good</option>
+            <option value="4">Excellent</option>
+          </select>
+        </div>
+        <div class="f">
+          <label>Performance Rating</label>
+          <select id="PerformanceRating">
+            <option value="3" selected>Excellent</option>
+            <option value="4">Outstanding</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <button class="pbtn" id="sbtn" onclick="predictSingle()">ANALYSE ATTRITION RISK →</button>
+
+    <!-- Result Box -->
+    <div id="result">
+      <div class="r-emoji" id="r-emoji"></div>
+      <div class="r-verdict" id="r-verdict"></div>
+      <div class="r-sub" id="r-sub"></div>
+      <div id="r-tag-wrap" style="margin-bottom:.9rem"></div>
+      <div class="bar-wrap"><div class="bar-fill" id="bar-fill" style="width:0%"></div></div>
+      <div class="r-pct" id="r-pct"></div>
+    </div>
+
+  </div><!-- /tab-single -->
+
+  <!-- ══════════ BATCH CSV ══════════ -->
+  <div id="tab-batch" class="tc">
+    <div class="card">
+      <div class="ch"><div class="ci">🗂️</div><div class="ct">Upload Any Company's HR CSV</div></div>
+      <p style="font-size:.83rem;color:var(--text2);margin-bottom:1.1rem;line-height:1.65">
+        Upload any company's employee CSV — columns are auto-detected by name.
+        Results show <strong style="color:var(--text)">Employee Name, Prediction, Risk %</strong> and a Flag if any rule was triggered.
+      </p>
+      <div class="uz">
+        <input type="file" id="csvFile" accept=".csv" onchange="handleUpload(this)">
+        <div class="ui">🗂️</div>
+        <div class="ut">Drop CSV here or click to browse</div>
+        <p class="us">Columns auto-detected · <b>Results in seconds</b></p>
+      </div>
+    </div>
+
+    <div class="lcard" id="lcard">
+      <div class="lt">Analysing dataset…</div>
+      <div class="ls">Matching columns · Checking logic · Running predictions</div>
+      <div class="pw"><div class="pf"></div></div>
+    </div>
+
+    <div id="batch-result">
+      <div class="banner" id="mbanner"></div>
+      <div class="sg">
+        <div class="sc"><div class="sn" id="st" style="color:var(--text)">—</div><div class="sl">Total Employees</div></div>
+        <div class="sc r"><div class="sn" id="sl2" style="color:var(--red)">—</div><div class="sl">Will Leave</div></div>
+        <div class="sc g"><div class="sn" id="ss" style="color:var(--green)">—</div><div class="sl">Will Stay</div></div>
+      </div>
+      <div class="tw">
+        <table>
+          <thead><tr id="t-head"></tr></thead>
+          <tbody id="t-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /wrap -->
 
 <script>
-    function switchTab(tab) {
-        document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.innerText.toLowerCase().includes(tab)));
-        document.querySelectorAll('.tab-content').forEach(c => c.classList.toggle('active', c.id.includes(tab)));
-    }
+function switchTab(t) {
+  document.querySelectorAll('.tb').forEach((b,i) =>
+    b.classList.toggle('active', (i===0&&t==='single')||(i===1&&t==='batch')));
+  document.getElementById('tab-single').classList.toggle('active', t==='single');
+  document.getElementById('tab-batch').classList.toggle('active',  t==='batch');
+}
 
-    async function predictSingle() {
-        const fields = ['Age','Education','EducationField','MaritalStatus','Gender','MonthlyIncome','OverTime','DailyRate','HourlyRate','MonthlyRate','Department','JobRole','JobLevel','BusinessTravel','TotalWorkingYears','YearsAtCompany','YearsInCurrentRole','YearsSinceLastPromotion','YearsWithCurrManager','NumCompaniesWorked','PercentSalaryHike','StockOptionLevel','TrainingTimesLastYear','JobSatisfaction','EnvironmentSatisfaction','JobInvolvement','WorkLifeBalance','PerformanceRating','RelationshipSatisfaction','DistanceFromHome'];
-        const data = {};
-        fields.forEach(f => { const el = document.getElementById(f); if(el) data[f] = el.value; });
+function toggleHourly() {
+  const ot = document.getElementById('OverTime').value;
+  document.getElementById('hourly-section').classList.toggle('show', ot === 'Yes');
+}
 
-        const btn = document.querySelector('.predict-btn');
-        btn.innerText = "ANALYZING..."; btn.disabled = true;
+async function predictSingle() {
+  const numFields = [
+    'Age','Education','JobLevel','NumCompaniesWorked',
+    'MonthlyIncome','DailyRate','HourlyRate','MonthlyRate','StockOptionLevel',
+    'TotalWorkingYears','YearsAtCompany','YearsInCurrentRole','YearsSinceLastPromotion',
+    'JobSatisfaction','EnvironmentSatisfaction','WorkLifeBalance','PerformanceRating'
+  ];
+  const txtFields = ['Gender','MaritalStatus','Department','JobRole','OverTime','EducationField'];
 
-        try {
-            const res = await fetch('/predict_single', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data) });
-            const out = await res.json();
-            document.getElementById('result').style.display = 'block';
-            document.getElementById('verdict-text').innerText = out.prediction;
-            document.getElementById('verdict-text').style.color = out.color === 'red' ? 'var(--red)' : 'var(--green)';
-            document.getElementById('result-reason').innerText = out.reason || "";
-            document.getElementById('risk-text').innerText = "Prediction Probability: " + out.risk;
-        } catch (e) { alert("Error connecting to server."); }
-        finally { btn.innerText = "ANALYZE RISK STATUS →"; btn.disabled = false; }
-    }
+  const data = {
+    // Fields removed from UI — fill with neutral defaults so model still works
+    DistanceFromHome: 9,
+    BusinessTravel: 'Travel_Rarely',
+    PercentSalaryHike: 15,
+    TrainingTimesLastYear: 3,
+    YearsWithCurrManager: 4,
+    JobInvolvement: 3,
+    RelationshipSatisfaction: 3,
+  };
 
-    async function handleUpload(input) {
-        const fd = new FormData(); fd.append('file', input.files[0]);
-        const res = await fetch('/upload_and_predict', { method: 'POST', body: fd });
-        const out = await res.json();
-        document.getElementById('batch-result').style.display = 'block';
-        document.getElementById('stat-summary').innerText = `Total: ${out.total} | Leaving: ${out.leaving} | Staying: ${out.staying}`;
-        let html = '<thead><tr>' + out.columns.map(c => `<th>${c}</th>`).join('') + '</tr></thead><tbody>';
-        out.results.forEach(r => {
-            html += '<tr>' + out.columns.map(c => `<td>${c === 'Prediction' ? `<span class="chip ${r[c].includes('Leave')?'leave':'stay'}">${r[c]}</span>` : r[c]}</td>`).join('') + '</tr>';
-        });
-        document.getElementById('batch-table').innerHTML = html + '</tbody>';
-    }
+  numFields.forEach(f => {
+    const el = document.getElementById(f);
+    if (el) data[f] = Number(el.value);
+  });
+  txtFields.forEach(f => {
+    const el = document.getElementById(f);
+    if (el) data[f] = el.value;
+  });
+
+  const btn = document.getElementById('sbtn');
+  btn.textContent = 'ANALYSING…'; btn.disabled = true;
+
+  try {
+    const res = await fetch('/predict_single', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(data)
+    });
+    const out = await res.json();
+    showResult(out);
+  } catch(e) {
+    alert('Connection error. Make sure the server is running.');
+  } finally {
+    btn.textContent = 'ANALYSE ATTRITION RISK →';
+    btn.disabled = false;
+  }
+}
+
+function showResult(out) {
+  const leave = out.color === 'red';
+  const pct   = parseFloat(out.risk);
+
+  const box = document.getElementById('result');
+  box.style.display    = 'block';
+  box.style.borderColor = leave ? 'rgba(255,77,109,.3)' : 'rgba(16,212,142,.3)';
+  box.style.background  = leave ? 'rgba(255,77,109,.05)' : 'rgba(16,212,142,.05)';
+
+  document.getElementById('r-emoji').textContent   = leave ? '🚨' : '✅';
+  document.getElementById('r-verdict').textContent = out.prediction;
+  document.getElementById('r-verdict').style.color = leave ? 'var(--red)' : 'var(--green)';
+  document.getElementById('r-sub').textContent     = leave
+    ? 'This employee is at elevated risk of leaving the organization.'
+    : 'This employee is likely to remain with the organization.';
+
+  const tagClass = out.method === 'rule' ? 'rule' : 'model';
+  const tagLabel = out.method === 'rule' ? '⚠️ Rule triggered' : '🤖 ML Model';
+  document.getElementById('r-tag-wrap').innerHTML = out.reason
+    ? `<div class="r-tag ${tagClass}">${tagLabel}: ${out.reason}</div>`
+    : `<div class="r-tag model">🤖 Predicted by Random Forest ML model (87.76% accuracy)</div>`;
+
+  const bar = document.getElementById('bar-fill');
+  bar.style.width      = pct + '%';
+  bar.style.background = leave ? 'var(--red)' : 'var(--green)';
+  document.getElementById('r-pct').textContent = `Attrition probability: ${out.risk}`;
+  box.scrollIntoView({behavior: 'smooth', block: 'nearest'});
+}
+
+async function handleUpload(input) {
+  const file = input.files[0]; if (!file) return;
+  document.getElementById('lcard').style.display        = 'block';
+  document.getElementById('batch-result').style.display = 'none';
+  const fd = new FormData(); fd.append('file', file);
+  try {
+    const res = await fetch('/upload_and_predict', {method: 'POST', body: fd});
+    const out = await res.json();
+    document.getElementById('lcard').style.display = 'none';
+    showBatch(out);
+  } catch(e) {
+    document.getElementById('lcard').style.display = 'none';
+    alert('Error reading CSV. Check file format.');
+  }
+}
+
+function showBatch(out) {
+  const un = out.unmatched || [];
+  const bn = document.getElementById('mbanner');
+  if (un.length === 0) {
+    bn.className = 'banner good';
+    bn.innerHTML = `✅ All ${out.auto_matched} columns matched perfectly.`;
+  } else {
+    bn.className = 'banner warn';
+    bn.innerHTML = `⚡ ${out.auto_matched} columns matched · <strong>${un.length} not found</strong> (using averages): ${un.slice(0,5).join(', ')}${un.length>5?'…':''}`;
+  }
+
+  document.getElementById('st').textContent  = out.total;
+  document.getElementById('sl2').textContent = out.leaving;
+  document.getElementById('ss').textContent  = out.staying;
+
+  document.getElementById('t-head').innerHTML =
+    '<th style="width:40px">#</th>' +
+    out.columns.map(c => `<th>${c}</th>`).join('');
+
+  document.getElementById('t-body').innerHTML = out.results.map((r, i) => {
+    const leave = r.Prediction === 'Will Leave';
+    const cells = out.columns.map(c => {
+      if (c === 'Prediction')
+        return `<td><span class="chip ${leave?'leave':'stay'}">${r[c]}</span></td>`;
+      if (c === 'Attrition Risk %')
+        return `<td class="rm">${r[c]}%</td>`;
+      if (c === 'Flag')
+        return `<td class="fc" title="${r[c]||''}">${r[c] ? '⚠️ ' + r[c] : ''}</td>`;
+      return `<td style="color:var(--text2)">${r[c] ?? '—'}</td>`;
+    }).join('');
+    return `<tr><td class="rn">${String(i+1).padStart(2,'0')}</td>${cells}</tr>`;
+  }).join('');
+
+  document.getElementById('batch-result').style.display = 'block';
+  document.getElementById('batch-result').scrollIntoView({behavior:'smooth', block:'nearest'});
+}
 </script>
 </body>
 </html>
