@@ -443,6 +443,7 @@ tbody tr:hover td{background:rgba(99,120,255,.04)}
 </div><!-- /wrap -->
 
 <script>
+// Tab Switching Logic
 function switchTab(t) {
   document.querySelectorAll('.tb').forEach((b,i) =>
     b.classList.toggle('active', (i===0&&t==='single')||(i===1&&t==='batch')));
@@ -450,22 +451,25 @@ function switchTab(t) {
   document.getElementById('tab-batch').classList.toggle('active',  t==='batch');
 }
 
+// Toggle Hourly Rate Section
 function toggleHourly() {
   const ot = document.getElementById('OverTime').value;
   document.getElementById('hourly-section').classList.toggle('show', ot === 'Yes');
 }
 
+// Single Employee Prediction - CRITICAL INTELLIGENCE MAPPING
 async function predictSingle() {
+  // 1. Define all possible field IDs from your HTML
   const numFields = [
-    'Age','Education','JobLevel','NumCompaniesWorked',
-    'MonthlyIncome','DailyRate','HourlyRate','MonthlyRate','StockOptionLevel',
-    'TotalWorkingYears','YearsAtCompany','YearsInCurrentRole','YearsSinceLastPromotion',
-    'JobSatisfaction','EnvironmentSatisfaction','WorkLifeBalance','PerformanceRating'
+    'Age', 'Education', 'JobLevel', 'NumCompaniesWorked',
+    'MonthlyIncome', 'DailyRate', 'HourlyRate', 'MonthlyRate', 'StockOptionLevel',
+    'TotalWorkingYears', 'YearsAtCompany', 'YearsInCurrentRole', 'YearsSinceLastPromotion',
+    'JobSatisfaction', 'EnvironmentSatisfaction', 'WorkLifeBalance', 'PerformanceRating'
   ];
-  const txtFields = ['Gender','MaritalStatus','Department','JobRole','OverTime','EducationField'];
+  const txtFields = ['Gender', 'MaritalStatus', 'Department', 'JobRole', 'OverTime', 'EducationField'];
 
+  // 2. Initialize data with default values for any missing model columns
   const data = {
-    // Fields removed from UI — fill with neutral defaults so model still works
     DistanceFromHome: 9,
     BusinessTravel: 'Travel_Rarely',
     PercentSalaryHike: 15,
@@ -475,6 +479,7 @@ async function predictSingle() {
     RelationshipSatisfaction: 3,
   };
 
+  // 3. Gather values from your form
   numFields.forEach(f => {
     const el = document.getElementById(f);
     if (el) data[f] = Number(el.value);
@@ -485,104 +490,96 @@ async function predictSingle() {
   });
 
   const btn = document.getElementById('sbtn');
-  btn.textContent = 'ANALYSING…'; btn.disabled = true;
+  btn.textContent = 'ANALYSING...'; btn.disabled = true;
 
   try {
     const res = await fetch('/predict_single', {
       method: 'POST',
-      headers: {'Content-Type': 'application/json'},
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
     });
     const out = await res.json();
     showResult(out);
-  } catch(e) {
-    alert('Connection error. Make sure the server is running.');
+  } catch (e) {
+    alert('Connection error. Make sure the Flask server is running.');
   } finally {
     btn.textContent = 'ANALYSE ATTRITION RISK →';
     btn.disabled = false;
   }
 }
 
+// Display Result with Smart Logic Flags
 function showResult(out) {
   const leave = out.color === 'red';
-  const pct   = parseFloat(out.risk);
-
+  const pct = parseFloat(out.risk);
   const box = document.getElementById('result');
-  box.style.display    = 'block';
+  
+  box.style.display = 'block';
   box.style.borderColor = leave ? 'rgba(255,77,109,.3)' : 'rgba(16,212,142,.3)';
-  box.style.background  = leave ? 'rgba(255,77,109,.05)' : 'rgba(16,212,142,.05)';
+  box.style.background = leave ? 'rgba(255,77,109,.05)' : 'rgba(16,212,142,.05)';
 
-  document.getElementById('r-emoji').textContent   = leave ? '🚨' : '✅';
+  document.getElementById('r-emoji').textContent = leave ? '🚨' : '✅';
   document.getElementById('r-verdict').textContent = out.prediction;
   document.getElementById('r-verdict').style.color = leave ? 'var(--red)' : 'var(--green)';
-  document.getElementById('r-sub').textContent     = leave
-    ? 'This employee is at elevated risk of leaving the organization.'
-    : 'This employee is likely to remain with the organization.';
+  
+  document.getElementById('r-sub').textContent = leave
+    ? 'High risk of attrition detected based on profile analysis.'
+    : 'This employee is likely to remain stable in their current role.';
 
+  // Logic Tag: Displays if a Rule (like $1 salary) or ML Model made the choice
   const tagClass = out.method === 'rule' ? 'rule' : 'model';
-  const tagLabel = out.method === 'rule' ? '⚠️ Rule triggered' : '🤖 ML Model';
+  const tagLabel = out.method === 'rule' ? '⚠️ Logic Override' : '🤖 ML Prediction';
   document.getElementById('r-tag-wrap').innerHTML = out.reason
     ? `<div class="r-tag ${tagClass}">${tagLabel}: ${out.reason}</div>`
-    : `<div class="r-tag model">🤖 Predicted by Random Forest ML model (87.76% accuracy)</div>`;
+    : `<div class="r-tag model">🤖 Predicted by Random Forest (Pattern Analysis)</div>`;
 
   const bar = document.getElementById('bar-fill');
-  bar.style.width      = pct + '%';
+  bar.style.width = pct + '%';
   bar.style.background = leave ? 'var(--red)' : 'var(--green)';
-  document.getElementById('r-pct').textContent = `Attrition probability: ${out.risk}`;
-  box.scrollIntoView({behavior: 'smooth', block: 'nearest'});
+  document.getElementById('r-pct').textContent = `Risk Probability: ${out.risk}`;
+  
+  box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
+// Batch Analysis Logic
 async function handleUpload(input) {
   const file = input.files[0]; if (!file) return;
-  document.getElementById('lcard').style.display        = 'block';
+  document.getElementById('lcard').style.display = 'block';
   document.getElementById('batch-result').style.display = 'none';
   const fd = new FormData(); fd.append('file', file);
   try {
-    const res = await fetch('/upload_and_predict', {method: 'POST', body: fd});
+    const res = await fetch('/upload_and_predict', { method: 'POST', body: fd });
     const out = await res.json();
     document.getElementById('lcard').style.display = 'none';
     showBatch(out);
-  } catch(e) {
+  } catch (e) {
     document.getElementById('lcard').style.display = 'none';
-    alert('Error reading CSV. Check file format.');
+    alert('Error reading CSV. Ensure column names match.');
   }
 }
 
 function showBatch(out) {
-  const un = out.unmatched || [];
-  const bn = document.getElementById('mbanner');
-  if (un.length === 0) {
-    bn.className = 'banner good';
-    bn.innerHTML = `✅ All ${out.auto_matched} columns matched perfectly.`;
-  } else {
-    bn.className = 'banner warn';
-    bn.innerHTML = `⚡ ${out.auto_matched} columns matched · <strong>${un.length} not found</strong> (using averages): ${un.slice(0,5).join(', ')}${un.length>5?'…':''}`;
-  }
-
-  document.getElementById('st').textContent  = out.total;
+  document.getElementById('st').textContent = out.total;
   document.getElementById('sl2').textContent = out.leaving;
-  document.getElementById('ss').textContent  = out.staying;
+  document.getElementById('ss').textContent = out.staying;
 
-  document.getElementById('t-head').innerHTML =
-    '<th style="width:40px">#</th>' +
+  document.getElementById('t-head').innerHTML = 
+    '<th style="width:40px">#</th>' + 
     out.columns.map(c => `<th>${c}</th>`).join('');
 
   document.getElementById('t-body').innerHTML = out.results.map((r, i) => {
     const leave = r.Prediction === 'Will Leave';
     const cells = out.columns.map(c => {
-      if (c === 'Prediction')
-        return `<td><span class="chip ${leave?'leave':'stay'}">${r[c]}</span></td>`;
-      if (c === 'Attrition Risk %')
-        return `<td class="rm">${r[c]}%</td>`;
-      if (c === 'Flag')
-        return `<td class="fc" title="${r[c]||''}">${r[c] ? '⚠️ ' + r[c] : ''}</td>`;
+      if (c === 'Prediction') return `<td><span class="chip ${leave?'leave':'stay'}">${r[c]}</span></td>`;
+      if (c === 'Attrition Risk %') return `<td class="rm">${r[c]}%</td>`;
+      if (c === 'Flag') return `<td class="fc" title="${r[c]||''}">${r[c] ? '⚠️ ' + r[c] : ''}</td>`;
       return `<td style="color:var(--text2)">${r[c] ?? '—'}</td>`;
     }).join('');
     return `<tr><td class="rn">${String(i+1).padStart(2,'0')}</td>${cells}</tr>`;
   }).join('');
 
   document.getElementById('batch-result').style.display = 'block';
-  document.getElementById('batch-result').scrollIntoView({behavior:'smooth', block:'nearest'});
+  document.getElementById('batch-result').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 </script>
 </body>
